@@ -1,12 +1,11 @@
 import streamlit as st
-import pandas as pd
 import pickle
-from datetime import datetime
+import calendar
+import datetime
 
-# ✅ THIS MUST BE FIRST!
+# Set page config first
 st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
 
-# Load the model and label encoder
 @st.cache_resource
 def load_model():
     with open("xgb_model.pkl", "rb") as f:
@@ -17,27 +16,34 @@ def load_model():
 
 model, le = load_model()
 
-# Page content
 st.title("🚦 Real-Time Traffic Level Predictor")
-st.markdown("Use this app to predict traffic level based on time and location!")
 
 # Input fields
 junction = st.selectbox("Select Junction", [1, 2, 3, 4])
-now = datetime.now()
-hour = st.slider("Hour", 0, 23, now.hour)
-day = now.day
-weekday = now.weekday()
-month = now.month
-is_weekend = 1 if weekday in [5, 6] else 0
+hour = st.slider("Hour of Day (24hr)", 0, 23, 12)
 
-# Display context
-st.write(f"📅 **Date:** {now.date()} | 🕒 **Time:** {hour}:00")
-st.write(f"🛣️ **Junction:** {junction} | 🗓️ **Day:** {day}, **Weekday:** {weekday}, **Month:** {month}, **Weekend:** {'Yes' if is_weekend else 'No'}")
+# Get day name from dropdown
+day_name = st.selectbox("Day of the Week", list(calendar.day_name))
+day = list(calendar.day_name).index(day_name)
+
+# Get weekday and weekend info
+weekday = day  # for compatibility
+is_weekend = 1 if day in [5, 6] else 0  # 5 = Saturday, 6 = Sunday
+
+month = st.slider("Month", 1, 12, datetime.datetime.now().month)
 
 # Predict button
 if st.button("Predict Traffic Level"):
-    input_df = pd.DataFrame([[junction, hour, day, weekday, month, is_weekend]],
-                            columns=["Junction", "Hour", "Day", "Weekday", "Month", "IsWeekend"])
-    prediction_encoded = model.predict(input_df)[0]
-    prediction = le.inverse_transform([prediction_encoded])[0]
-    st.success(f"✅ Predicted Traffic Level: **{prediction}**")
+    input_data = {
+        "Junction": junction,
+        "Hour": hour,
+        "Day": day,
+        "Weekday": weekday,
+        "Month": month,
+        "IsWeekend": is_weekend
+    }
+
+    prediction = model.predict([list(input_data.values())])[0]
+    traffic_level = le.inverse_transform([prediction])[0]
+    
+    st.success(f"Predicted Traffic Level: **{traffic_level}**")
