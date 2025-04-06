@@ -3,6 +3,9 @@ import pandas as pd
 import pickle
 from datetime import datetime
 
+# ✅ THIS MUST BE FIRST!
+st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
+
 # Load the model and label encoder
 @st.cache_resource
 def load_model():
@@ -14,8 +17,7 @@ def load_model():
 
 model, le = load_model()
 
-# Page layout
-st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
+# Page content
 st.title("🚦 Real-Time Traffic Level Predictor")
 st.markdown("Use this app to predict traffic level based on time and location!")
 
@@ -28,7 +30,7 @@ weekday = now.weekday()
 month = now.month
 is_weekend = 1 if weekday in [5, 6] else 0
 
-# Display current time context
+# Display context
 st.write(f"📅 **Date:** {now.date()} | 🕒 **Time:** {hour}:00")
 st.write(f"🛣️ **Junction:** {junction} | 🗓️ **Day:** {day}, **Weekday:** {weekday}, **Month:** {month}, **Weekend:** {'Yes' if is_weekend else 'No'}")
 
