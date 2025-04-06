@@ -1,11 +1,10 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import pickle
 from datetime import datetime
 import pytz
 
-# ⬅️ Ensure this is the first Streamlit command
+# ✅ Must be the first Streamlit command
 st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
 
 # Load model and label encoder
@@ -21,38 +20,49 @@ model, le = load_model()
 
 # Get current IST date and time
 ist = pytz.timezone('Asia/Kolkata')
-current_datetime = datetime.now(ist)
+now = datetime.now(ist)
 
-# Extract relevant time features
-current_hour = current_datetime.hour
-current_day = current_datetime.day
-current_weekday = current_datetime.strftime('%A')  # e.g., 'Sunday'
-current_month = current_datetime.month
-is_weekend = 1 if current_weekday in ["Saturday", "Sunday"] else 0
+# Extract features
+hour = now.hour
+day = now.day
+month = now.month
+year = now.year
+weekday_str = now.strftime("%A")
+weekday_num = now.weekday()
+is_weekend = 1 if weekday_str in ['Saturday', 'Sunday'] else 0
 
-# Display information
+# Junction name mapping
+junction_map = {
+    "Hebbal Junction": 1,
+    "Nagawara Junction": 2,
+    "Silk Board": 3,
+    "Electronic City": 4
+}
+
+# App interface
 st.title("🚦 Real-Time Traffic Level Predictor")
-st.markdown(f"📅 **Date:** {current_day}/{current_month}")
-st.markdown(f"📆 **Weekday:** {current_weekday}")
-st.markdown(f"🕒 **Current Hour (IST):** {current_hour}")
+st.markdown("This app predicts the traffic level based on the current time and junction location.")
 
-# Let user select the Junction
-junction = st.selectbox("Select Junction", [1, 2, 3, 4], format_func=lambda x: f"Junction {x}")
+# Display current datetime info
+st.markdown(f"📅 **Date:** {day} {now.strftime('%B')} {year} ({weekday_str})")
+st.markdown(f"🕒 **Current Hour (IST):** {hour}")
+
+# Junction selection
+junction_name = st.selectbox("Select Junction", list(junction_map.keys()))
+junction = junction_map[junction_name]
 
 # Predict button
 if st.button("Predict Traffic Level"):
-    input_data = pd.DataFrame([{
+    input_df = pd.DataFrame([{
         "Junction": junction,
-        "Hour": current_hour,
-        "Day": current_day,
-        "Weekday": current_datetime.weekday(),  # Numeric format for model
-        "Month": current_month,
+        "Hour": hour,
+        "Day": day,
+        "Weekday": weekday_num,
+        "Month": month,
         "IsWeekend": is_weekend
     }])
-
-    prediction = model.predict(input_data)
+    prediction = model.predict(input_df)
     traffic_level = le.inverse_transform(prediction)[0]
-
     st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
 
 # Footer
