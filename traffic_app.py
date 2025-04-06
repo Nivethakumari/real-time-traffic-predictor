@@ -1,4 +1,8 @@
 import streamlit as st
+
+# ✅ This must be the FIRST Streamlit command!
+st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
+
 import pickle
 import pandas as pd
 import datetime
@@ -13,9 +17,6 @@ def load_model():
     return model, le
 
 model, le = load_model()
-
-# Set page config at the top
-st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
 
 st.title("🚦 Real-Time Traffic Level Predictor")
 st.markdown("This app predicts the traffic level based on current time and location.")
