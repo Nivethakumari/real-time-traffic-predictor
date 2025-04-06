@@ -1,13 +1,10 @@
 import streamlit as st
 import pickle
+import pandas as pd
 import datetime
-import calendar
 
-# Set the page config (this must be first)
-st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
-
-# Load model and label encoder
-@st.cache_data
+# Load the model and label encoder
+@st.cache_resource
 def load_model():
     with open("xgb_model.pkl", "rb") as f:
         model = pickle.load(f)
@@ -17,38 +14,51 @@ def load_model():
 
 model, le = load_model()
 
+# Set page config at the top
+st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
+
 st.title("🚦 Real-Time Traffic Level Predictor")
-st.markdown("Predict traffic levels at a junction based on the current time and date.")
+st.markdown("This app predicts the traffic level based on current time and location.")
 
-# Select Junction
-junction = st.selectbox("Select Junction", [1, 2, 3, 4])
-
-# Select Hour
-hour = st.slider("Select Hour (0 - 23)", 0, 23)
-
-# Get current date info
-now = datetime.datetime.now()
-day = now.weekday()  # 0 = Monday, 6 = Sunday
-day_name = calendar.day_name[day]
-month = now.month
-date_str = now.strftime("%B %d, %Y")  # e.g., April 07, 2025
-is_weekend = 1 if day >= 5 else 0
-
-# Show the date and day to user
-st.markdown(f"📅 **Today:** {day_name}, {date_str}")
-
-# Prepare input data
-input_data = {
-    "Junction": junction,
-    "Hour": hour,
-    "Day": day,
-    "Weekday": day,
-    "Month": month,
-    "IsWeekend": is_weekend
+# Junction Mapping
+junction_map = {
+    "Hebbal Junction": 1,
+    "Nagawara Junction": 2,
+    "Silk Board": 3,
+    "Electronic City": 4
 }
+
+# User selects a readable junction name
+junction_name = st.selectbox("Select Junction", list(junction_map.keys()))
+junction = junction_map[junction_name]
+
+# Get current date and time values
+now = datetime.datetime.now()
+hour = now.hour
+day = now.day
+weekday = now.strftime("%A")  # e.g., 'Sunday'
+month = now.month
+is_weekend = 1 if weekday in ['Saturday', 'Sunday'] else 0
+
+# Display the auto-filled info
+st.write(f"🕒 Current Hour: {hour}")
+st.write(f"📅 Date: {now.strftime('%d %B %Y')} ({weekday})")
 
 # Predict
 if st.button("Predict Traffic Level"):
-    pred = model.predict([list(input_data.values())])
-    traffic_level = le.inverse_transform(pred)[0]
+    input_data = pd.DataFrame([{
+        "Junction": junction,
+        "Hour": hour,
+        "Day": day,
+        "Weekday": now.weekday(),  # model needs number 0–6
+        "Month": month,
+        "IsWeekend": is_weekend
+    }])
+
+    prediction = model.predict(input_data)
+    traffic_level = le.inverse_transform(prediction)[0]
     st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
+
+# Footer
+st.markdown("---")
+st.markdown("Created by **Nivethakumari**")
