@@ -34,9 +34,9 @@ junction_name = st.selectbox("Select Junction", list(junction_map.keys()))
 junction = junction_map[junction_name]
 
 selected_date = st.date_input("Select Date")
-selected_hour = st.slider("Select Hour (0-23)", 0, 23, datetime.now().hour)
+selected_hour = st.slider("Select Hour (0–23)", 0, 23, datetime.now().hour)
 
-# Feature engineering
+# Feature Engineering
 day = selected_date.day
 month = selected_date.month
 weekday_name = selected_date.strftime("%A")
@@ -47,7 +47,6 @@ is_month_end = 1 if day >= 28 else 0
 quarter = (month - 1) // 3 + 1
 is_weekend_morning = 1 if is_weekend and (6 <= selected_hour <= 11) else 0
 
-# Part of Day
 def get_part_of_day(hour):
     if 0 <= hour < 6:
         return 0  # Night
@@ -70,23 +69,31 @@ debug = st.checkbox("Show model input data")
 
 # Predict button
 if st.button("Predict Traffic Level"):
-    input_data = pd.DataFrame([{
-        "Junction": junction,
-        "Hour": selected_hour,
-        "Day": day,
-        "Weekday": weekday_num,
-        "Month": month,
-        "IsWeekend": is_weekend,
-        "PartOfDay": part_of_day,
-        "IsMonthStart": is_month_start,
-        "IsMonthEnd": is_month_end,
-        "Quarter": quarter,
-        "IsWeekendMorning": is_weekend_morning
-    }])
-
-    # Ensure columns match model
-    input_data.columns = model.get_booster().feature_names
-    input_data = input_data.astype(float)
+    input_data = pd.DataFrame([[
+        junction,
+        selected_hour,
+        day,
+        weekday_num,
+        month,
+        is_weekend,
+        part_of_day,
+        is_month_start,
+        is_month_end,
+        quarter,
+        is_weekend_morning
+    ]], columns=[
+        "Junction",
+        "Hour",
+        "Day",
+        "Weekday",
+        "Month",
+        "IsWeekend",
+        "PartOfDay",
+        "IsMonthStart",
+        "IsMonthEnd",
+        "Quarter",
+        "IsWeekendMorning"
+    ])
 
     # Debug info
     if debug:
@@ -95,29 +102,20 @@ if st.button("Predict Traffic Level"):
         st.write("📊 Data Types:")
         st.write(input_data.dtypes)
 
-    # Prediction
+    # Predict
     prediction = model.predict(input_data)
     traffic_level = le.inverse_transform(prediction)[0]
 
     # Output
     st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
 
-    # Custom messages based on junction
+    # Special notes per junction
     if junction_name == "Hebbal Junction":
-        st.markdown(
-            "🔍 **Note:** Predictions for **Hebbal** are made relative to its usual traffic levels. "
-            "Even low vehicle counts may result in 'High' labels due to local patterns."
-        )
+        st.info("🔍 Note: Predictions for **Hebbal** are made relative to its usual traffic levels. Even low vehicle counts may result in 'High' labels due to local patterns.")
     elif junction_name == "Nagawara Junction":
-        st.markdown(
-            "🔍 **Note:** **Nagawara Junction** tends to be predicted as **Medium** frequently. "
-            "This is due to balanced traffic volumes observed during data collection."
-        )
+        st.info("🔍 Note: **Nagawara** often shows 'Medium' traffic due to typical flow levels seen in training data.")
     elif junction_name == "Electronic City":
-        st.markdown(
-            "🔍 **Note:** **Electronic City** is often predicted as **Low** based on the historical data, "
-            "especially during non-peak hours."
-        )
+        st.info("🔍 Note: **Electronic City** is usually labeled 'Low' due to overall reduced traffic in the dataset.")
 
 # Footer
 st.markdown("---")
