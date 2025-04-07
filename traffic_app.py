@@ -82,6 +82,10 @@ if st.button("Predict Traffic Level"):
         "IsWeekendMorning": is_weekend_morning
     }])
 
+    # ✅ Fix column order mismatch with model
+    input_data.columns = model.get_booster().feature_names
+
+    # Make prediction
     prediction = model.predict(input_data)
     traffic_level = le.inverse_transform(prediction)[0]
 
