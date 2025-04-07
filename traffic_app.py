@@ -84,16 +84,17 @@ if st.button("Predict Traffic Level"):
         "IsWeekendMorning": is_weekend_morning
     }])
 
-    # Ensure columns match model
-    input_data.columns = model.get_booster().feature_names
+    # Match input features to model
+    model_features = model.get_booster().feature_names
+    input_data = input_data[model_features]
     input_data = input_data.astype(float)
 
-    # Debug info
     if debug:
         st.subheader("🧪 Model Input Data")
         st.write(input_data)
         st.write("📊 Data Types:")
         st.write(input_data.dtypes)
+        st.write("✅ Columns match model:", input_data.columns.tolist() == model_features)
 
     # Prediction
     prediction = model.predict(input_data)
@@ -112,4 +113,5 @@ if st.button("Predict Traffic Level"):
 # Footer
 st.markdown("---")
 st.markdown("👩‍💻 Created by **Nivethakumari & Dharshini Shree**")
+
 
