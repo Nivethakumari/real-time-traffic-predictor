@@ -3,7 +3,7 @@ import pandas as pd
 import pickle
 from datetime import datetime
 
-# This must be the first Streamlit command
+# Set page configuration
 st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
 
 # Load model and label encoder
@@ -29,42 +29,44 @@ junction_map = {
 st.title("🚦 Real-Time Traffic Level Predictor")
 st.markdown("Predict traffic levels for any date, time, and location in Bengaluru.")
 
-# Select junction
+# User Inputs
 junction_name = st.selectbox("Select Junction", list(junction_map.keys()))
 junction = junction_map[junction_name]
 
-# User inputs: date and hour
 selected_date = st.date_input("Select Date")
 selected_hour = st.slider("Select Hour (0-23)", 0, 23, datetime.now().hour)
 
-# Extract base features
+# Feature engineering
 day = selected_date.day
 month = selected_date.month
 weekday_name = selected_date.strftime("%A")
 weekday_num = selected_date.weekday()
 is_weekend = 1 if weekday_name in ["Saturday", "Sunday"] else 0
+is_month_start = 1 if day <= 3 else 0
+is_month_end = 1 if day >= 28 else 0
+quarter = (month - 1) // 3 + 1
+is_weekend_morning = 1 if is_weekend and (6 <= selected_hour <= 11) else 0
 
-# Additional engineered features
+# Part of Day
 def get_part_of_day(hour):
-    if 5 <= hour < 12:
-        return 0  # Morning
-    elif 12 <= hour < 17:
-        return 1  # Afternoon
-    elif 17 <= hour < 21:
-        return 2  # Evening
+    if 0 <= hour < 6:
+        return 0  # Night
+    elif 6 <= hour < 12:
+        return 1  # Morning
+    elif 12 <= hour < 18:
+        return 2  # Afternoon
     else:
-        return 3  # Night
+        return 3  # Evening
 
 part_of_day = get_part_of_day(selected_hour)
-is_month_start = 1 if day <= 5 else 0
-is_month_end = 1 if day >= 26 else 0
-is_weekend_morning = 1 if is_weekend and selected_hour < 12 else 0
-quarter = (month - 1) // 3 + 1
 
-# Show selected info
+# Display selected info
 formatted_date = selected_date.strftime("%d %B %Y")
 st.markdown(f"📅 **Selected Date:** {formatted_date} ({weekday_name})")
 st.markdown(f"🕒 **Selected Hour:** {selected_hour}:00")
+
+# Debug checkbox
+debug = st.checkbox("Show model input data")
 
 # Predict button
 if st.button("Predict Traffic Level"):
@@ -78,15 +80,36 @@ if st.button("Predict Traffic Level"):
         "PartOfDay": part_of_day,
         "IsMonthStart": is_month_start,
         "IsMonthEnd": is_month_end,
-        "IsWeekendMorning": is_weekend_morning,
-        "Quarter": quarter
+        "Quarter": quarter,
+        "IsWeekendMorning": is_weekend_morning
     }])
 
+    # Ensure columns match model
+    input_data.columns = model.get_booster().feature_names
+    input_data = input_data.astype(float)
+
+    # Debug info
+    if debug:
+        st.subheader("🧪 Model Input Data")
+        st.write(input_data)
+        st.write("📊 Data Types:")
+        st.write(input_data.dtypes)
+
+    # Prediction
     prediction = model.predict(input_data)
     traffic_level = le.inverse_transform(prediction)[0]
 
+    # Output
     st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
+
+    # Special info for Hebbal + High traffic
+    if junction_name == "Hebbal Junction" and traffic_level == "High":
+        st.info(
+            "ℹ️ **Hebbal Junction** is often predicted as high due to real-world congestion "
+            "and patterns seen during model training. Try changing time or day to compare."
+        )
 
 # Footer
 st.markdown("---")
-st.markdown("👩‍💻 Created by **Nivethakumari**")
+st.markdown("👩‍💻 Created by **Nivethakumari & Dharshini Shree**")
+
