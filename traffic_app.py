@@ -84,32 +84,28 @@ if st.button("Predict Traffic Level"):
         "IsWeekendMorning": is_weekend_morning
     }])
 
-    # Ensure columns match model
-    input_data.columns = model.get_booster().feature_names
-    input_data = input_data.astype(float)
+    # Make sure columns are in the exact order expected by model
+    expected_columns = model.get_booster().feature_names
+    input_data = input_data[expected_columns].astype(float)
 
-    # Debug info
     if debug:
         st.subheader("🧪 Model Input Data")
         st.write(input_data)
-        st.write("📊 Data Types:")
-        st.write(input_data.dtypes)
+        st.write("🧩 Expected Features:", expected_columns)
 
-    # Prediction
     prediction = model.predict(input_data)
     traffic_level = le.inverse_transform(prediction)[0]
 
-    # Output
     st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
 
-    # Special info for Hebbal + High traffic
-    if junction_name == "Hebbal Junction" and traffic_level == "High":
-        st.info(
-            "ℹ️ **Hebbal Junction** is often predicted as high due to real-world congestion "
-            "and patterns seen during model training. Try changing time or day to compare."
-        )
+    # Junction-specific interpretation note
+    if junction_name == "Hebbal Junction":
+        st.info("🔍 Note: Predictions for **Hebbal** are made relative to its usual traffic levels. Even low vehicle counts may result in 'High' labels due to local patterns.")
+    elif junction_name == "Nagawara Junction":
+        st.info("🔍 Note: **Nagawara** tends to show 'Medium' traffic most of the time, based on learned data patterns.")
+    elif junction_name == "Electronic City":
+        st.info("🔍 Note: **Electronic City** is relatively less congested and often predicted as 'Low' traffic.")
 
 # Footer
 st.markdown("---")
 st.markdown("👩‍💻 Created by **Nivethakumari & Dharshini Shree**")
-
