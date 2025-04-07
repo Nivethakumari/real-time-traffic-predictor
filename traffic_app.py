@@ -25,19 +25,18 @@ junction_map = {
     "Electronic City": 4
 }
 
-# Title and description
+# Title
 st.title("🚦 Real-Time Traffic Level Predictor")
 st.markdown("Predict traffic levels for any date, time, and location in Bengaluru.")
 
-# Junction select box
+# User Input: Junction, Date, Time
 junction_name = st.selectbox("Select Junction", list(junction_map.keys()))
 junction = junction_map[junction_name]
 
-# Date and time input
 selected_date = st.date_input("Select Date")
 selected_hour = st.slider("Select Hour (0-23)", 0, 23, datetime.now().hour)
 
-# Feature engineering
+# Extract Features
 day = selected_date.day
 month = selected_date.month
 weekday_name = selected_date.strftime("%A")
@@ -48,6 +47,7 @@ is_month_end = 1 if selected_date.day >= 28 else 0
 quarter = (month - 1) // 3 + 1
 is_weekend_morning = 1 if is_weekend and (6 <= selected_hour <= 11) else 0
 
+# Part of Day
 def get_part_of_day(hour):
     if 0 <= hour < 6:
         return 0  # Night
@@ -60,13 +60,10 @@ def get_part_of_day(hour):
 
 part_of_day = get_part_of_day(selected_hour)
 
-# Display selections
+# Display selected info
 formatted_date = selected_date.strftime("%d %B %Y")
 st.markdown(f"📅 **Selected Date:** {formatted_date} ({weekday_name})")
 st.markdown(f"🕒 **Selected Hour:** {selected_hour}:00")
-
-# Checkbox to show model input
-debug = st.checkbox("Show model input data")
 
 # Predict button
 if st.button("Predict Traffic Level"):
@@ -84,25 +81,21 @@ if st.button("Predict Traffic Level"):
         "IsWeekendMorning": is_weekend_morning
     }])
 
-    # Match feature order
+    # Ensure input feature columns match the model
     input_data.columns = model.get_booster().feature_names
 
-    # Ensure all features are numeric
-    input_data = input_data.astype(float)
-
-    # Show debug info if checked
-    if debug:
-        st.subheader("🧪 Model Input Data")
-        st.write(input_data)
-        st.write("Data Types:")
-        st.write(input_data.dtypes)
-
-    # Predict
     prediction = model.predict(input_data)
     traffic_level = le.inverse_transform(prediction)[0]
 
-    # Show result
     st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
+
+    # Extra explanation if Hebbal and High
+    if junction_name == "Hebbal Junction" and traffic_level == "High":
+        st.info(
+            "ℹ️ **Hebbal Junction** is often marked as high due to real-world traffic congestion "
+            "and patterns learned during model training. Try comparing predictions for different "
+            "hours or days for deeper insight."
+        )
 
 # Footer
 st.markdown("---")
