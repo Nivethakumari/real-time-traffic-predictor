@@ -84,17 +84,16 @@ if st.button("Predict Traffic Level"):
         "IsWeekendMorning": is_weekend_morning
     }])
 
-    # Match input features to model
-    model_features = model.get_booster().feature_names
-    input_data = input_data[model_features]
+    # Ensure columns match model
+    input_data.columns = model.get_booster().feature_names
     input_data = input_data.astype(float)
 
+    # Debug info
     if debug:
         st.subheader("🧪 Model Input Data")
         st.write(input_data)
         st.write("📊 Data Types:")
         st.write(input_data.dtypes)
-        st.write("✅ Columns match model:", input_data.columns.tolist() == model_features)
 
     # Prediction
     prediction = model.predict(input_data)
@@ -103,15 +102,23 @@ if st.button("Predict Traffic Level"):
     # Output
     st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
 
-    # Special info for Hebbal + High traffic
-    if junction_name == "Hebbal Junction" and traffic_level == "High":
-        st.info(
-            "ℹ️ **Hebbal Junction** is often predicted as high due to real-world congestion "
-            "and patterns seen during model training. Try changing time or day to compare."
+    # Custom messages based on junction
+    if junction_name == "Hebbal Junction":
+        st.markdown(
+            "🔍 **Note:** Predictions for **Hebbal** are made relative to its usual traffic levels. "
+            "Even low vehicle counts may result in 'High' labels due to local patterns."
+        )
+    elif junction_name == "Nagawara Junction":
+        st.markdown(
+            "🔍 **Note:** **Nagawara Junction** tends to be predicted as **Medium** frequently. "
+            "This is due to balanced traffic volumes observed during data collection."
+        )
+    elif junction_name == "Electronic City":
+        st.markdown(
+            "🔍 **Note:** **Electronic City** is often predicted as **Low** based on the historical data, "
+            "especially during non-peak hours."
         )
 
 # Footer
 st.markdown("---")
 st.markdown("👩‍💻 Created by **Nivethakumari & Dharshini Shree**")
-
-
