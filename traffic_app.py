@@ -37,29 +37,29 @@ junction = junction_map[junction_name]
 selected_date = st.date_input("Select Date")
 selected_hour = st.slider("Select Hour (0-23)", 0, 23, datetime.now().hour)
 
-# Extract base features
+# Extract date/time-based features
 day = selected_date.day
 month = selected_date.month
 weekday_name = selected_date.strftime("%A")
 weekday_num = selected_date.weekday()
 is_weekend = 1 if weekday_name in ["Saturday", "Sunday"] else 0
+is_month_start = 1 if selected_date.day <= 3 else 0
+is_month_end = 1 if selected_date.day >= 28 else 0
+quarter = (month - 1) // 3 + 1
+is_weekend_morning = 1 if is_weekend and (6 <= selected_hour <= 11) else 0
 
-# Additional engineered features
+# Part of Day
 def get_part_of_day(hour):
-    if 5 <= hour < 12:
-        return 0  # Morning
-    elif 12 <= hour < 17:
-        return 1  # Afternoon
-    elif 17 <= hour < 21:
-        return 2  # Evening
+    if 0 <= hour < 6:
+        return 0  # Night
+    elif 6 <= hour < 12:
+        return 1  # Morning
+    elif 12 <= hour < 18:
+        return 2  # Afternoon
     else:
-        return 3  # Night
+        return 3  # Evening
 
 part_of_day = get_part_of_day(selected_hour)
-is_month_start = 1 if day <= 5 else 0
-is_month_end = 1 if day >= 26 else 0
-is_weekend_morning = 1 if is_weekend and selected_hour < 12 else 0
-quarter = (month - 1) // 3 + 1
 
 # Show selected info
 formatted_date = selected_date.strftime("%d %B %Y")
@@ -78,8 +78,8 @@ if st.button("Predict Traffic Level"):
         "PartOfDay": part_of_day,
         "IsMonthStart": is_month_start,
         "IsMonthEnd": is_month_end,
-        "IsWeekendMorning": is_weekend_morning,
-        "Quarter": quarter
+        "Quarter": quarter,
+        "IsWeekendMorning": is_weekend_morning
     }])
 
     prediction = model.predict(input_data)
@@ -89,4 +89,4 @@ if st.button("Predict Traffic Level"):
 
 # Footer
 st.markdown("---")
-st.markdown("👩‍💻 Created by **Nivethakumari**")
+st.markdown("👩‍💻 Created by **Nivethakumari & Dharshini Shree**")
