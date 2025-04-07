@@ -82,17 +82,13 @@ if st.button("Predict Traffic Level"):
         "IsWeekendMorning": is_weekend_morning
     }])
 
-    # Reorder features to match model
-    expected_columns = model.get_booster().feature_names
-    try:
-        input_data = input_data[expected_columns]
-    except KeyError as e:
-        st.error(f"❌ Feature mismatch! {e}")
-        st.write("🔍 Input columns:", input_data.columns.tolist())
-        st.stop()
+    # Align features with model if needed
+    input_data.columns = model.get_booster().feature_names
 
-    # Optional: Show input data for debugging
-    # st.write("🧾 Final input data to model:", input_data)
+    # ✅ Debug view: Show input data and expected features
+    if st.checkbox("Show model input data (debug mode)"):
+        st.write("📊 Input Data Sent to Model:", input_data)
+        st.write("📌 Model Expected Features:", model.get_booster().feature_names)
 
     prediction = model.predict(input_data)
     traffic_level = le.inverse_transform(prediction)[0]
