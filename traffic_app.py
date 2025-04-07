@@ -6,7 +6,7 @@ from datetime import datetime
 import pytz
 
 # Load model and label encoder
-with open("traffic_model.pkl", "rb") as f:
+with open("xgb_model.pkl", "rb") as f:
     model = pickle.load(f)
 
 with open("label_encoder.pkl", "rb") as f:
