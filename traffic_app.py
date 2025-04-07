@@ -1,50 +1,78 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import pickle
 from datetime import datetime
-import pytz
+
+# Set page configuration
+st.set_page_config(page_title="Traffic Level Predictor", layout="centered")
 
 # Load model and label encoder
-with open("xgb_model.pkl", "rb") as f:
-    model = pickle.load(f)
+@st.cache_resource
+def load_model():
+    with open("xgb_model.pkl", "rb") as f:
+        model = pickle.load(f)
+    with open("label_encoder.pkl", "rb") as f:
+        le = pickle.load(f)
+    return model, le
 
-with open("label_encoder.pkl", "rb") as f:
-    le = pickle.load(f)
+model, le = load_model()
 
-# Junction mapping
-junctions = {
-    'Hebbal Junction': 0,
-    'KR Puram Junction': 1,
-    'Nayandahalli Junction': 2,
-    'Nagawara Junction': 3,
-    'Konnur High Road': 4
+# Junction Mapping
+junction_map = {
+    "Hebbal Junction": 1,
+    "Nagawara Junction": 2,
+    "Silk Board": 3,
+    "Electronic City": 4
 }
 
-# Helper function to extract features
-def extract_features(junction, date, hour):
-    date = pd.to_datetime(date)
-    day = date.day
-    month = date.month
-    weekday_num = date.weekday()
-    quarter = date.quarter
-    is_month_start = int(date.is_month_start)
-    is_month_end = int(date.is_month_end)
-    is_weekend = int(weekday_num >= 5)
-    is_weekend_morning = int(is_weekend and 6 <= hour <= 9)
+# Title and description
+st.title("🚦 Real-Time Traffic Level Predictor")
+st.markdown("Predict traffic levels for any date, time, and location in Bengaluru.")
 
-    if 5 <= hour < 12:
-        part_of_day = "Morning"
-    elif 12 <= hour < 17:
-        part_of_day = "Afternoon"
-    elif 17 <= hour < 21:
-        part_of_day = "Evening"
+# Junction select box
+junction_name = st.selectbox("Select Junction", list(junction_map.keys()))
+junction = junction_map[junction_name]
+
+# Date and time input
+selected_date = st.date_input("Select Date")
+selected_hour = st.slider("Select Hour (0-23)", 0, 23, datetime.now().hour)
+
+# Feature engineering
+day = selected_date.day
+month = selected_date.month
+weekday_name = selected_date.strftime("%A")
+weekday_num = selected_date.weekday()
+is_weekend = 1 if weekday_name in ["Saturday", "Sunday"] else 0
+is_month_start = 1 if selected_date.day <= 3 else 0
+is_month_end = 1 if selected_date.day >= 28 else 0
+quarter = (month - 1) // 3 + 1
+is_weekend_morning = 1 if is_weekend and (6 <= selected_hour <= 11) else 0
+
+def get_part_of_day(hour):
+    if 0 <= hour < 6:
+        return 0  # Night
+    elif 6 <= hour < 12:
+        return 1  # Morning
+    elif 12 <= hour < 18:
+        return 2  # Afternoon
     else:
-        part_of_day = "Night"
+        return 3  # Evening
 
-    return {
-        "Junction": junctions[junction],
-        "Hour": hour,
+part_of_day = get_part_of_day(selected_hour)
+
+# Display selections
+formatted_date = selected_date.strftime("%d %B %Y")
+st.markdown(f"📅 **Selected Date:** {formatted_date} ({weekday_name})")
+st.markdown(f"🕒 **Selected Hour:** {selected_hour}:00")
+
+# Checkbox to show model input
+debug = st.checkbox("Show model input data")
+
+# Predict button
+if st.button("Predict Traffic Level"):
+    input_data = pd.DataFrame([{
+        "Junction": junction,
+        "Hour": selected_hour,
         "Day": day,
         "Weekday": weekday_num,
         "Month": month,
@@ -54,51 +82,28 @@ def extract_features(junction, date, hour):
         "IsMonthEnd": is_month_end,
         "Quarter": quarter,
         "IsWeekendMorning": is_weekend_morning
-    }
+    }])
 
-# Streamlit page setup
-st.set_page_config(page_title="Real-Time Traffic Predictor", page_icon="🚦", layout="centered")
+    # Match feature order
+    input_data.columns = model.get_booster().feature_names
 
-# Title
-st.markdown("<h1 style='text-align: center;'>🚦 Real-Time Traffic Level Predictor</h1>", unsafe_allow_html=True)
-st.markdown("#### Predict traffic levels for any date, time, and location in Bengaluru.")
+    # Ensure all features are numeric
+    input_data = input_data.astype(float)
 
-# Input selections
-junction = st.selectbox("Select Junction", list(junctions.keys()))
+    # Show debug info if checked
+    if debug:
+        st.subheader("🧪 Model Input Data")
+        st.write(input_data)
+        st.write("Data Types:")
+        st.write(input_data.dtypes)
 
-# Get current IST datetime
-ist = pytz.timezone("Asia/Kolkata")
-now = datetime.now(ist)
+    # Predict
+    prediction = model.predict(input_data)
+    traffic_level = le.inverse_transform(prediction)[0]
 
-date = st.date_input("Select Date", now.date())
-hour = st.slider("Select Hour (0–23)", min_value=0, max_value=23, value=now.hour)
-
-# Show selected date/time
-weekday_name = date.strftime("%A")
-formatted_date = date.strftime("%d %B %Y")
-st.markdown(f"📅 **Selected Date:** {formatted_date} ({weekday_name})")
-st.markdown(f"🕒 **Selected Hour:** {hour:02d}:00")
-
-# Prediction form
-with st.form("predict_form"):
-    submitted = st.form_submit_button("Predict Traffic Level")
-    show_debug = st.checkbox("Show model input data (debug mode)")
-
-    if submitted:
-        features = extract_features(junction, date, hour)
-        input_data = pd.DataFrame([features])
-
-        # Reorder to match model
-        input_data.columns = model.get_booster().feature_names
-
-        if show_debug:
-            st.write("🔍 Input Features Sent to Model:", input_data)
-            st.write("📌 Model Expected Features:", model.get_booster().feature_names)
-
-        prediction = model.predict(input_data)
-        traffic_level = le.inverse_transform(prediction)[0]
-
-        st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
+    # Show result
+    st.success(f"🚗 Predicted Traffic Level: **{traffic_level}**")
 
 # Footer
-st.markdown("<br><hr><center>Created by Nivethakumari</center>", unsafe_allow_html=True)
+st.markdown("---")
+st.markdown("👩‍💻 Created by **Nivethakumari & Dharshini Shree**")
